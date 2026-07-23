@@ -70,6 +70,12 @@ jobs:
           export PATH="$JDK_BASE_PATH/bin:/opt/homebrew/bin:$PATH"
           export JAVA_HOME="$JDK_BASE_PATH"
           export BOOTJDK="$JDK_BASE_PATH/bin"
+
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version || true
+          echo "JDK_BASE_PATH=$JDK_BASE_PATH"
+          ls -la "$JDK_BASE_PATH/bin" || true
+
           export SLIMMED=1
           
           export CODE_SIGNING_ALLOWED=NO
@@ -81,12 +87,11 @@ jobs:
 
           SIGN_FLAGS="CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="
 
-          # Save full stderr to files while filtering vtool warnings from console output
           gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=2 $SIGN_FLAGS \
-            2> >(tee build_gmake_full.stderr | grep -v "vtool warning: code signature will be invalid" >&2)
+            2> build_gmake_full.stderr || { cat build_gmake_full.stderr; exit 1; }
 
           gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=2 TROLLSTORE_JIT_ENT=1 $SIGN_FLAGS \
-            2> >(tee build_gmake_troll_full.stderr | grep -v "vtool warning: code signature will be invalid" >&2)
+            2> build_gmake_troll_full.stderr || { cat build_gmake_troll_full.stderr; exit 1; }
 
       - name: List artifacts
         if: always()
