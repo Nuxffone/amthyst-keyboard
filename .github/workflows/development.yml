@@ -15,9 +15,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+      - name: Clone submodules
+        run: |
+          git clone --depth 1 https://github.com/khanhduytran0/DBNumberedSlider Natives/external/DBNumberedSlider
+          git clone --depth 1 --branch jev/main https://github.com/khanhduytran0/fishhook Natives/external/fishhook
+          git clone --depth 1 https://github.com/AFNetworking/AFNetworking Natives/external/AFNetworking
+          git clone --depth 1 https://github.com/MobileGL-Dev/MobileGlues Natives/external/MobileGlues
+          rm -rf Natives/external/*/.git
 
       - name: Set up Xcode Version
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
