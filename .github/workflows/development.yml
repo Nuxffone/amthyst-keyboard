@@ -62,6 +62,8 @@ jobs:
       - name: Build sideload IPA & TrollStore tIPA
         shell: bash
         run: |
+          set -eo pipefail
+
           echo '#import <mach/mach.h>' | cat - Natives/JavaLauncher.m > temp && mv temp Natives/JavaLauncher.m
 
           JDK_BASE_PATH="${{ steps.setup-java.outputs.path }}"
@@ -79,10 +81,12 @@ jobs:
 
           SIGN_FLAGS="CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="
 
-          # WARNING MITIGATION: Filter runtime stderr streams to suppress repetitive upstream vtool signature warnings
-          gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=2 $SIGN_FLAGS 2> >(grep -v "vtool warning: code signature will be invalid" >&2)
-          
-          gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=2 TROLLSTORE_JIT_ENT=1 $SIGN_FLAGS 2> >(grep -v "vtool warning: code signature will be invalid" >&2)
+          # Save full stderr to files while filtering vtool warnings from console output
+          gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=2 $SIGN_FLAGS \
+            2> >(tee build_gmake_full.stderr | grep -v "vtool warning: code signature will be invalid" >&2)
+
+          gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=2 TROLLSTORE_JIT_ENT=1 $SIGN_FLAGS \
+            2> >(tee build_gmake_troll_full.stderr | grep -v "vtool warning: code signature will be invalid" >&2)
 
       - name: List artifacts
         if: always()
@@ -124,4 +128,14 @@ jobs:
           path: |
             Natives/build/CMakeFiles/CMakeOutput.log
             Natives/build/CMakeFiles/CMakeError.log
+          if-no-files-found: ignore
+
+      - name: Upload gmake logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gmake-build-logs
+          path: |
+            build_gmake_full.stderr
+            build_gmake_troll_full.stderr
           if-no-files-found: ignore
